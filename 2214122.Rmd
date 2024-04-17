@@ -1,0 +1,262 @@
+---
+title: "MA331-Report:2214122"
+author: "Bhattacharya,Ria"
+output:
+  html_document: default
+subtitle: "TED Talks by Speaker Zach\tKaplan and Speaker Nick\tBostrom"
+---
+
+## Introduction
+Zach Kaplan the CEO of Inventables, a firm that gathers and displays innovative products and concepts,delivered a speech on the TED talks platform,along with Keith Schacht,the co-founder of the firm.The TED talk's theme was "Toys and materials from the future," and the presenters discussed and demonstrated a number of novel products, including a gel magnet that is softer and more pliable than conventional magnets, a 10-foot pole that can be easily rolled up and stowed in a person's pocket, and a dry liquid that evaporates 25 times more quickly than water,a kind of plastic that keeps its shape, which is remarkable because generally only metals do so, and an ink that changes color in reaction to odors, which can be used to identify disease in patients or detect air quality in case of a fire.
+<br>
+Nick Bostrom, a philosopher, gave a TED talk on "What happens when our computers get smarter than we are?" in 2015. One of the most important thinkers of our generation, he is a professor at Oxford University and the director of the Future of Humanity Institute. He discusses the possibility of artificial intelligence surpassing human intelligence within a short period of time. He recommends a workaround by attempting to create an AI that shares our values and objectives and is secure for the future of humanity because there is no way to ensure control over such artificial intelligence.
+<br>
+The main goal of the report is to analyze these two TED Talks, show the most often used words by the presenters, display the words that are used frequently in both lectures, and make comparisons between them. To show the proportion of negative and positive words, the sentiments lexicon will be employed.Moreover the odds ratio and log odds ratio will be computed and displayed for the two talks.
+
+## Methods
+The data of the TED talk transcripts named ted_talks will be loaded using the dsEssex package.This data set has the columns talk_id which has a unique id for each talk,headline has the topic of the ted talk and text column has the entire ted talk transcript.The speaker column has names of the speakers for each ted talk and views field stores the number of views for the ted talks.
+<br>
+Then the ted talks by speakers Zach Kaplan and Nick Bostrom will be filtered out from the data using dplyr’s filter() function.Next tidytext’s unnest_tokens() will be used to tidy and tokenise the ted_talks data in single words.The get_stopwords() function will retrieve the stopwords like and,to,at and the anti_join() function will remove the stopwords.For Zach Kaplan there were some initials used for the speaker names like zk,ks and names zach,kaplan,keith,steve.Also laughter is crowd response to his talk and not in words used by him.So, this was also removed.A custom lexicon was created and added to stop_words and then this modified stop_words was used to remove the custom stopwords also  from the ted talk. 
+<br>
+Next a word count was done for both the speakers using dplyr's count() function and using ggplot2's geom_col the top 25 words was plotted for both speakers.Then a comparison was done of the words used by both speakers, whose sum of frequencies across both the talks was more than 5. geom_text_repel() was used from the package ggrepel to plot words of Zach Kaplan on the x-axis against words of Nick Bostrom on the y-axis.Using bing lexicon we have done an inner join with the topwords and visualized the positive and negative words of the two speakers and their overall percentages in the speech has been shown in a table.nrc sentiments was assigned to the topwords using inner_join and pivot_wider used to display the counts in a wide format under each speaker.compute_OR() from dsEssex was used to create a new column for the odds ratios of the sentiments of Nick Bostrom to sentiments for Zach Kaplan.And the log Odds ratio is displayed in the table and in a plot by using ggplot2's geom_col().
+
+## Results
+
+
+```{r Load libraries,  echo = FALSE,message=FALSE,warning=FALSE}
+# install the package if it hasn't been already installed
+
+if(!require(dsEssex)){
+  if(!require("devtools")) install.packages("devtools")
+  devtools::install_github("statcourses/dsEssex")
+}
+
+# load the necessary libraries
+library(dsEssex)
+library(tidytext)
+library(tidyverse) 
+library(dplyr)
+library(ggrepel)
+library(tidytext)
+library(knitr)
+```
+
+``` {r TED talks of speakers ,echo=FALSE,message=FALSE,warning=FALSE,results='hide'}
+#load ted_talks data
+data(ted_talks)
+#Extract the speech given by speaker Zach Kaplan by using dplyr's filter() function
+ZachKaplan_tedtalks = ted_talks %>%
+  filter(speaker == "Zach Kaplan")
+
+#Tidying and tokenization of Zach Kaplan s ted talk
+#function unnest_tokens() from tidytext library is used to breakdown the talk by Zach Kaplan into words
+ZachKaplan_tidy_talks = ZachKaplan_tedtalks %>% 
+  unnest_tokens(word, text)
+
+#removal of stopwords 
+#There are some names used like 'zach','kaplan','keith','steve' and name initials 'ks','zk'.Also laughter is crowd response to his talk and not in words used by him..A custom lexicon dataframe is created using the custom stopwords and the lexicon value as 'custom'.Then these values are added to the existing dataframe stop_words.Then anti_join is used on stop_words to remove them from the ted_talks dataset.
+
+custom_stopwords= c('ks','zk','zach','kaplan','keith','steve','laughter')
+lexicon <-  rep("custom", times=length(word))
+
+# Create a dataframe from the two vectors above
+mystopwords <- data.frame(custom_stopwords, lexicon)
+names(mystopwords) <- c("word", "lexicon")
+stop_words = bind_rows(stop_words, mystopwords)
+ZachKaplan_ted_talks_nonstop = ZachKaplan_tidy_talks %>%
+  anti_join(stop_words) 
+
+
+#identification of top words by speaker Zach Kaplan
+# dplyr’s count() to count up words and sort them with the most frequent ones at the top 
+ZachKaplan_topwords = ZachKaplan_ted_talks_nonstop %>%
+  count(speaker, word, sort = TRUE)
+
+#####################################################################################
+#extract the speech given by speaker Nick Bostrom
+NickBostrom_tedtalks = ted_talks %>%
+  filter(speaker == "Nick Bostrom")
+
+#Tidying and tokenization of Nick Bostrom's ted talk
+NickBostrom_tidy_talks = NickBostrom_tedtalks %>% 
+  unnest_tokens(word, text)
+
+#removal of stopwords
+#get_stopwords() gets a list of stopwords from the data and anti_join removes these words.
+NickBostrom_ted_talks_nonstop = NickBostrom_tidy_talks %>%
+  anti_join(get_stopwords())
+
+#identification of top words by speaker Nick Bostrom
+## dplyr’s count() to count up words and sort them with the most frequent ones at the top
+NickBostrom_topwords = NickBostrom_ted_talks_nonstop %>%
+  count(speaker, word, sort = TRUE)
+
+cat("\n\n")
+```
+#### Visualization of topwords for speakers Zach Kaplan and Nick Bostrom
+
+The two plots show the top 25 words for both the speakers with the frequency of the words on x-axis and the words on the y-axis.Some of the topwords used by Zach Kaplan are unexpected,water,magnet,technology,ink.For Nick Bostrom some of the topwords are ai,think,human,intelligence.
+
+```{r Topwordsvisualization, fig.show="hold", out.width="50%",echo=FALSE,message=FALSE,warning=FALSE}
+#Plot Visualization of the top words for Zach Kaplan and Nick Bostrom
+# ggplot2’s geom_col() is used to display frequency of the words on the x-axis and words on the y-axis and slice_max() is used to select the top 25 words used by the speakers.Then the words are again reordered using reorder() and mutate adds new variable word in ordered form.
+
+ZachKaplan_topwords %>%
+  slice_max(n, n = 25) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word,fill=1)) + 
+  geom_col(show.legend=FALSE) +
+  xlab("Frequency of words") + 
+  ylab("Topwords used") + 
+  ggtitle("Top words used by speaker Zach Kaplan")
+
+NickBostrom_topwords %>%
+  slice_max(n, n = 25) %>%
+ mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word,fill=1)) + geom_col(show.legend=FALSE) + xlab("Frequency of words")  + 
+  ylab("Topwords used") +
+  ggtitle("Top words used by speaker Nick Bostrom")
+
+cat("\n\n")
+```
+
+#### Comparison of words used by the two speakers
+
+ The plot shown below is a comparison of the words used by the two speakers.The words of Zach Kaplan are plotted on x-axis and that of Nick Bostrom are on the  y-axis.The green dotted line seen in the plot is used as a reference line.The words close to the line are common words used by both the speakers and the words away from the reference line both on x and y axis appear in the respective speaker's ted talks.The word counts for the words can also be seen in the plot.
+
+```{r TopwordsSpeakerComparison ,echo=FALSE,message=FALSE,warning=FALSE,out.width="50%"}
+
+#Comparing the topwords of the speakers using visualization
+# The topwords of the two speakers are grouped together by words for word frequency greater than 5 and using geom_text_repel() from ggrepel package the words are plotted.geom_abline is used to add a reference line in the plot and see which words are most common and least common among the two speakers.
+
+  bind_rows(ZachKaplan_topwords, NickBostrom_topwords) %>%
+  group_by(word) %>%
+  filter(sum(n) >5) %>%
+  ungroup() %>%
+  pivot_wider(names_from = "speaker", values_from = "n", values_fill = 0) %>%
+  ggplot(aes(`Zach Kaplan`, `Nick Bostrom`)) +
+  geom_abline(color = "green", size = 1.2, alpha = 0.75, lty = 2,slope=3) +
+  geom_text_repel(aes(label = word), max.overlaps = 25) +
+  ggtitle("Comparison of topwords used by Zach Kaplan and Nick Bostrom")
+
+```
+
+```{r SentimentAnalysis, echo=FALSE,message=FALSE,warning=FALSE,results='hide'}
+
+#binding the rows of the two data frames
+ted_talk_topwords = bind_rows(ZachKaplan_topwords,NickBostrom_topwords)
+
+#return the values of positive and negative sentiment count for the two speakers
+#inner join is done with the top words of the two speakers and the bing lexicon.
+ted_talks_sentiment_counts = ted_talk_topwords %>%
+  inner_join(get_sentiments("bing"))
+
+#return the total count for sentimental analysis for the two speakers
+#the total count for the positive and negative sentiments for both the speakers is calculated
+(ted_talks_sentiment_total_count = ted_talks_sentiment_counts  %>%
+  count(speaker,sentiment))
+
+cat("\n\n")
+```
+
+#### Percentage of positive and negative words for both speakers
+According to the data, Nick Bostrom's TED talk has 56.25 percent of positive word sentiments which is more than Zach Kaplan's talk which has 45.45 percent positive words. Zach Kaplan's TED talk words receive a score of 54.55% for negative sentiments, whereas Nick Bostrom receives a lower score of 43.75%.However the number of total words is more for Nick Bostrom than Zach Kaplan.Overall, Nick Bostrom's talk has more positive words than negative and Zach Kaplan has more negative word sentiments than positive.
+```{r PercentagePositiveNegativeSetiment, echo=FALSE,message=FALSE,warning=FALSE}
+#descriptive statistics of sentiments
+# find the total number of words in each ted talk, and percentage of each sentiment
+#the percentage of the positive and negative sentiments are calculated for both speakers and displayed in table format using kable.The results are sorted according to positive and negative sentiments for the two speakers.
+kable(ted_talks_sentiment_total_count %>%
+   group_by(speaker) %>%
+   mutate(Total = sum(n), Percentage = round((n / Total),4)) %>%
+   rename(Speaker_Name=speaker,WordSentiment=sentiment,Frequency=n) %>%
+   arrange(desc(WordSentiment)),format="markdown")
+
+```
+  
+```{r PositiveandNegativeWordsVisualization, echo=FALSE,message=FALSE,warning=FALSE}
+
+#visualization of positive and negative words for Zach Kaplan
+
+#Inner join of Zach Kaplan's top words with bing sentiment lexicon to get a sentiment count of the top words
+   ZachKaplan_sentimentcount = ZachKaplan_topwords %>% inner_join(get_sentiments("bing"))
+   
+#the sentiment count of top words for Zach Kaplan grouped by positive and negative sentiments and the first 10 rows are selected using slice_max .The word column is modified using mutate and reordered by frequency using reorder function and then it is again ungrouped.
+
+   top_words_ZachKaplan <- ZachKaplan_sentimentcount %>%
+  # group by sentiment
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>%
+  mutate(word = reorder(word, n)) %>%
+  ungroup() 
+
+#visualization of positive and negative words for Nick Bostrom
+
+   #Inner join of Nick Bostrom's top words with bing sentiment lexicon to get a sentiment count of the top words   
+   NickBostrom_sentimentcount = NickBostrom_topwords %>% inner_join(get_sentiments("bing"))
+ 
+#the sentiment count of top words for Nick Bostrom grouped by positive and negative sentiments and the first 10 rows are selected using slice_max .The word column is modified using mutate and reordered by frequency using reorder function and then it is again ungrouped.  
+   top_words_NickBostrom <- NickBostrom_sentimentcount %>%
+  # group by sentiment
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>%
+  mutate(word = reorder(word, n)) %>%
+  ungroup() 
+ cat("\n\n")  
+```
+#### Bar graphs for negative and positive words
+The most common positive and negative words for each speaker has been visualized with the help of plots where the words are plotted against their frequencies.
+
+```{r positive-negative, fig.show="hold", out.width="50%",echo=FALSE,message=FALSE,warning=FALSE}  
+#The words are plotted against their frequencies using geom_col() and facet_wrap is used to facet the plots by sentiment.To avoid fixed scales in facet scales="free" is used in facet wrap.The plots have been generated for each speaker.
+
+ggplot(top_words_ZachKaplan, aes(n, word, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ sentiment, scales = "free") +
+  xlab("Word Count")+
+  ylab("Words")+
+  ggtitle("Visualization of negative and positive words for Zach Kaplan")
+
+ggplot(top_words_NickBostrom, aes(n, word, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ sentiment, scales = "free") +
+  xlab("Word Count")+
+  ylab("Words")+
+  ggtitle("Visualization of negative and positive words for Nick Bostrom")
+cat("\n\n") 
+```
+
+#### Log-Odds ratio for the two speakers
+The odds ratio for the sentiments for Nick Bostrom to the sentiments for Zach Kaplan has been calculated.The log odds ratio has also been calculated and displayed in the table.For odds ratio values greater than 1 it indicates that the sentiment count is more for speaker Nick Bostrom than Zach Kaplan.For example we can see in the table for "joy" sentiment the count is 28 for Nick Bostrom and 25 for Zach Kaplan and the OR value is calculated as 1.04. On the other hand if the OR value is less than 1 for example for anger sentiment it is 0.68, we can observe from the table that the count for Nick Bostrom is 15 compared to Zach Kaplan's 20.The log odds ratio is positive when the odds ratio is more than 1 and it is negative when the odds ratio is less than one.
+
+```{r log Odds ratio,echo=FALSE,message=FALSE,warning=FALSE}
+#remove the spaces from the speaker names
+ted_talk_topwords$speaker = str_replace_all(ted_talk_topwords$speaker," ","")
+
+#display log odds ratio in table format
+#Inner join has been done of the top words with the nrc sentiments lexicon.The odds ratio has been computed by using the computeOR function from dsEssex package and the the log odds ratio has been computed on the values of odds ratio.
+kable(ted_talk_topwords %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+   count(speaker, sentiment) %>%
+   pivot_wider(names_from = speaker, values_from = n,values_fill = 0)  %>%
+   mutate(OR = dsEssex::compute_OR(NickBostrom,ZachKaplan,correction = FALSE), log_OR = log(OR), sentiment = reorder(sentiment, log_OR)),format="markdown")
+
+cat("\n\n") 
+```
+
+#### Visualization of log odds ratio
+A bar chart has been plotted for the log odds ratio values of the different sentiments for Nick Bostrom to Zach Kaplan.The y-axis represents the bars for the log OR values.Blue color is used to denote the positive values and pink color for the negative log OR values.The higher the value the more related the sentiment values for the two speakers.
+```{r LogOR bargraph,echo=FALSE,message=FALSE,warning=FALSE}
+#plot for log-odds ratio
+#the log odds ratio values for both sentiments are plotted and the x-y coordinates are flipped using coord_flip.Different colors has been used for the bars to differentiate between the positive and negative log OR values.
+ted_talk_topwords %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+   count(speaker, sentiment) %>%
+   pivot_wider(names_from = speaker, values_from = n,values_fill = 0)  %>%
+   mutate(OR = compute_OR(NickBostrom,ZachKaplan,correction = FALSE), log_OR = log(OR), sentiment = reorder(sentiment, log_OR)) %>%
+    ggplot(aes(sentiment, log_OR, fill = log_OR < 0)) +
+  geom_col(show.legend = FALSE) +
+  ylab("Log odds ratio") + ggtitle("Bargraph of Logodds ratio for different sentiments for the two speakers") +
+  coord_flip() + 
+  scale_fill_manual(name = "", values = c("blue", "deeppink"))
+
+```
